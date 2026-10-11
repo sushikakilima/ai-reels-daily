@@ -1,0 +1,32 @@
+name: AI Reels Daily Pipeline
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://xvgojrsadzzefjgkwhrb.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_5mZEZoBOsIJyt55VCExFcw_Gp0QCnCG
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Siapkan kode aplikasi
+        run: unzip -o -q ai-reels-app.zip -d app && ls app
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dan build
+        run: cd app && npm ci && npm run build
+      - name: Jalankan pipeline berita
+        run: |
+          export CRON_SECRET=$(openssl rand -hex 32)
+          cd app
+          (./node_modules/.bin/next start -p 3000 > /tmp/next.log 2>&1 & echo $! > /tmp/next.pid)
+          for i in $(seq 1 30); do sleep 5; curl -sf http://127.0.0.1:3000/ >/dev/null && break; done
+          echo "=== hasil pipeline ==="
+          curl -s --max-time 100 "http://127.0.0.1:3000/api/cron/daily?secret=$CRON_SECRET" | head -c 1500
+          echo
+          kill $(cat /tmp/next.pid) 2>/dev/null || true
