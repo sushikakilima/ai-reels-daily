@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI REELS DAILY — Konten Reels Siap Posting</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { colors: { ink: '#0b0e14' } } } };
+</script>
+<style>
+  body { background: #0b0e14; }
+  .card-916 { aspect-ratio: 9 / 16; }
+  .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  details > summary { cursor: pointer; }
+  .fade-in { animation: fadeIn .4s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: none;} }
+</style>
+</head>
+<body class="text-slate-100 min-h-screen">
+<div class="max-w-6xl mx-auto px-4 py-6">
+
+  <header class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">🎬 AI REELS DAILY</h1>
+      <p class="text-slate-400 text-sm mt-1">10 berita AI terbaru setiap pagi • Konten siap posting • 100% Bahasa Indonesia</p>
+    </div>
+    <div class="text-right">
+      <div id="tanggal" class="text-sm text-slate-300 font-medium"></div>
+      <div id="status-pipeline" class="text-xs text-slate-500 mt-1">Memuat konten…</div>
+    </div>
+  </header>
+
+  <div id="banner" class="hidden mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"></div>
+
+  <div id="loading" class="grid grid-cols-2 gap-4">
+    <div class="rounded-2xl bg-slate-800/60 animate-pulse card-916"></div>
+    <div class="rounded-2xl bg-slate-800/60 animate-pulse card-916"></div>
+  </div>
+
+  <div id="empty" class="hidden text-center py-20">
+    <div class="text-5xl mb-4">🌙</div>
+    <p class="text-slate-300 font-medium">Belum ada konten hari ini.</p>
+    <p class="text-slate-500 text-sm mt-1">Pipeline otomatis berjalan setiap jam 05:00 WIB.</p>
+  </div>
+
+  <div id="grid" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5"></div>
+
+  <footer class="mt-10 text-center text-xs text-slate-600">
+    AI REELS DAILY • Sumber berita resmi tercantum di setiap kartu • Digerakkan otomatis setiap pagi
+  </footer>
+</div>
+
+<script>
+const SUPABASE_URL = "https://xvgojrsadzzefjgkwhrb.supabase.co";
+const SUPABASE_ANON = "sb_publishable_5mZEZoBOsIJyt55VCExFcw_Gp0QCnCG";
+const HEADERS = {
+  "apikey": SUPABASE_ANON,
+  "Authorization": "Bearer " + SUPABASE_ANON,
+  "Content-Type": "application/json"
+};
+
+const fmtTanggal = (iso) => {
+  try {
+    return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  } catch { return ""; }
+};
+
+document.getElementById("tanggal").textContent =
+  new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+function badgeStatus(s) {
+  const map = {
+    ready: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Siap</span>',
+    posted: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Terposting</span>',
+    discarded: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/30">Dibuang</span>'
+  };
+  return map[s] || map.ready;
+}
+
+function kartuHTML(item) {
+  const media = item.reels_video_url
+    ? `<video src="${item.reels_video_url}" class="w-full h-full object-cover" muted loop playsinline preload="metadata"></video>`
+    : (item.illustration_url
+        ? `<img src="${item.illustration_url}" alt="" class="w-full h-full object-cover" loading="lazy">`
+        : `<div class="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>`);
+  const caption = (item.caption_id || "").replace(/</g, "&lt;");
+  return `
+  <article id="kartu-${item.id}" class="fade-in rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl flex flex-col">
+    <div class="relative card-916 bg-slate-800">
+      ${media}
+      <div class="absolute top-3 left-3">${badgeStatus(item.status)}</div>
+      ${item.category ? `<div class="absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/60 text-slate-200 backdrop-blur">${item.category}</div>` : ""}
+      <div class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+        <h2 class="font-bold text-base md:text-lg leading-snug">${(item.indonesian_title || item.original_title || "").replace(/</g, "&lt;")}</h2>
+      </div>
+    </div>
+    <div class="p-4 flex flex-col gap-3 grow">
+      <details class="text-sm">
+        <summary class="text-slate-300 font-medium select-none">📝 Lihat caption siap posting</summary>
+        <div class="mt-2 whitespace-pre-line text-slate-400 text-[13px] leading-relaxed bg-slate-800/60 rounded-xl p-3">${caption || "—"}</div>
+      </details>
+      <div class="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+        ${item.original_url ? `<a href="${item.original_url}" target="_blank" rel="noopener" class="text-sky-400 hover:underline font-medium">🔗 Sumber Resmi</a>` : ""}
+        <span>📰 ${fmtTanggal(item.published_at || item.created_at)}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-auto pt-1">
+        <button onclick="postingSekarang('${item.id}')" class="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] text-white font-bold py-3 text-sm transition">📤 Posting Sekarang</button>
+        <button onclick="buang('${item.id}')" class="rounded-xl bg-red-500/90 hover:bg-red-500 active:scale-[.98] text-white font-bold py-3 text-sm transition">🗑️ Buang</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+async function muat() {
+  const grid = document.getElementById("grid");
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ai_news?select=*&status=eq.ready&order=created_at.desc&limit=10`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    document.getElementById("loading").classList.add("hidden");
+    const st = document.getElementById("status-pipeline");
+    if (!data.length) {
+      document.getElementById("empty").classList.remove("hidden");
+      st.textContent = "0 konten hari ini";
+      return;
+    }
+    st.textContent = data.length + " konten siap hari ini • diperbarui " +
+      new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    grid.innerHTML = data.map(kartuHTML).join("");
+    grid.classList.remove("hidden");
+    grid.querySelectorAll("video").forEach(v => {
+      v.addEventListener("mouseenter", () => v.play().catch(()=>{}));
+      v.addEventListener("mouseleave", () => v.pause());
+    });
+  } catch (e) {
+    document.getElementById("loading").classList.add("hidden");
+    const b = document.getElementById("banner");
+    b.textContent = "⚠️ Gagal memuat konten: " + e.message + ". Coba muat ulang halaman.";
+    b.classList.remove("hidden");
+  }
+}
+
+async function buang(id) {
+  if (!confirm("Buang konten ini dari dashboard hari ini?")) return;
+  const el = document.getElementById("kartu-" + id);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/ai_news?id=eq.${id}`, {
+      method: "PATCH", headers: { ...HEADERS, "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "discarded" })
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    el.style.transition = "opacity .3s, transform .3s";
+    el.style.opacity = "0"; el.style.transform = "scale(.96)";
+    setTimeout(() => { el.remove(); cekKosong(); }, 320);
+  } catch (e) { alert("Gagal membuang: " + e.message); }
+}
+
+function cekKosong() {
+  if (!document.getElementById("grid").children.length) {
+    document.getElementById("grid").classList.add("hidden");
+    document.getElementById("empty").classList.remove("hidden");
+  }
+}
+
+function postingSekarang(id) {
+  const b = document.getElementById("banner");
+  b.innerHTML = '⚠️ <b>Instagram belum terhubung.</b> Hubungkan dulu akun @hendrawankuswanto di versi penuh aplikasi (menu "Hubungkan Instagram") — setelah itu tombol ini akan memposting otomatis.';
+  b.classList.remove("hidden");
+  b.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+muat();
+</script>
+</body>
+</html>
