@@ -6,6 +6,8 @@ on:
 env:
   NEXT_PUBLIC_SUPABASE_URL: https://xvgojrsadzzefjgkwhrb.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_5mZEZoBOsIJyt55VCExFcw_Gp0QCnCG
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
 jobs:
   pipeline:
     runs-on: ubuntu-latest
