@@ -73,6 +73,7 @@ function badgeStatus(s) {
   const map = {
     ready: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Siap</span>',
     posted: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Terposting</span>',
+    antre: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">⏳ Antre Posting</span>',
     discarded: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/30">Dibuang</span>'
   };
   return map[s] || map.ready;
@@ -105,7 +106,9 @@ function kartuHTML(item) {
         <span>📰 ${fmtTanggal(item.published_at || item.created_at)}</span>
       </div>
       <div class="grid grid-cols-2 gap-2 mt-auto pt-1">
-        <button onclick="postingSekarang('${item.id}')" class="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] text-white font-bold py-3 text-sm transition">📤 Posting Sekarang</button>
+        ${item.status === "antre"
+          ? `<button disabled class="rounded-xl bg-amber-500/40 text-white font-bold py-3 text-sm cursor-wait">⏳ Antre Diposting…</button>`
+          : `<button onclick="postingSekarang('${item.id}')" class="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] text-white font-bold py-3 text-sm transition">📤 Posting Sekarang</button>`}
         <button onclick="buang('${item.id}')" class="rounded-xl bg-red-500/90 hover:bg-red-500 active:scale-[.98] text-white font-bold py-3 text-sm transition">🗑️ Buang</button>
       </div>
     </div>
@@ -116,7 +119,7 @@ async function muat() {
   const grid = document.getElementById("grid");
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ai_news?select=*&status=eq.ready&order=created_at.desc&limit=10`,
+      `${SUPABASE_URL}/rest/v1/ai_news?select=*&status=in.(ready,antre)&order=created_at.desc&limit=10`,
       { headers: HEADERS }
     );
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -166,11 +169,27 @@ function cekKosong() {
   }
 }
 
-function postingSekarang(id) {
+async function postingSekarang(id) {
   const b = document.getElementById("banner");
-  b.innerHTML = '⚠️ <b>Instagram belum terhubung.</b> Hubungkan dulu akun @hendrawankuswanto di versi penuh aplikasi (menu "Hubungkan Instagram") — setelah itu tombol ini akan memposting otomatis.';
-  b.classList.remove("hidden");
-  b.scrollIntoView({ behavior: "smooth", block: "center" });
+  const kartu = document.getElementById("kartu-" + id);
+  if (!confirm("Posting konten ini ke Instagram @hendrawankuswanto sekarang?")) return;
+  b.classList.add("hidden");
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/ai_news?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { ...HEADERS, "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "antre" })
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    b.innerHTML = '⏳ <b>Masuk antrean!</b> Konten akan otomatis terposting ke Instagram dalam beberapa menit. Kartu ini akan hilang dari daftar setelah terposting.';
+    b.classList.remove("hidden");
+    b.scrollIntoView({ behavior: "smooth", block: "center" });
+    muat();
+  } catch (e) {
+    b.innerHTML = '❌ <b>Gagal memasukkan antrean:</b> ' + String(e.message).replace(/</g, "&lt;");
+    b.classList.remove("hidden");
+    b.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 muat();
